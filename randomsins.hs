@@ -1,9 +1,9 @@
 module Main where
 
-import Control.Exception
 import Control.Applicative
-import Control.Monad
 import Control.DeepSeq
+import Control.Exception
+import Control.Monad
 import Control.Monad.Random
 import System.Random
 import qualified Data.Vector.Unboxed as U
@@ -16,15 +16,15 @@ amplitude = (0.1, 2)
 main = do
   g <- newStdGen
   res <- return $ (flip evalRand) g $ do
-      com <- U.fromList <$> (replicateM compCount $ genSinComponent)
-      spec1 <- com `seq` U.fromList <$> (replicateM compCount $ genSinComponent)
-      spec2 <- spec1 `seq` U.fromList <$> (replicateM compCount $ genSinComponent)
-      spec3 <- spec2 `seq` U.fromList <$> (replicateM compCount $ genSinComponent)
-      spec4 <- spec3 `seq` U.fromList <$> (replicateM compCount $ genSinComponent)
-      return $ force (mergeComps com spec1,
-                      mergeComps com spec2,
-                      mergeComps com spec3,
-                      mergeComps com spec4)
+      com <- genSins . U.fromList <$> (replicateM compCount $ genSinComponent)
+      spec1 <- genSins . U.fromList <$> (replicateM compCount $ genSinComponent)
+      spec2 <- genSins . U.fromList <$> (replicateM compCount $ genSinComponent)
+      spec3 <- genSins . U.fromList <$> (replicateM compCount $ genSinComponent)
+      spec4 <- genSins . U.fromList <$> (replicateM compCount $ genSinComponent)
+      return $ force (U.zipWith (+) com spec1,
+                      U.zipWith (+) com spec2,
+                      U.zipWith (+) com spec3,
+                      U.zipWith (+) com spec4)
   _ <- evaluate $!! res
   return ()
 
@@ -35,12 +35,9 @@ main = do
       amp <- getRandomR amplitude
       ph <- getRandomR (0, per)
       return (ph, per, amp)
-    mergeComps :: U.Vector (Double, Double, Double) -> U.Vector (Double, Double, Double) -> U.Vector Double
-    mergeComps com spec = U.zipWith (\a b -> a + b) (genSins com) (genSins spec)
-  
+
     genSins :: U.Vector (Double, Double, Double) -> U.Vector Double
     genSins comps = U.fromList $ map (genSin comps) [0..fromIntegral sinusLength]
 
     genSin :: U.Vector (Double, Double, Double) -> Double -> Double
     genSin comps x = U.foldl' (\res (ph, per, amp) -> res + (amp * (sin $ (x/per*2*pi)+ph ))) 0 comps
-  
